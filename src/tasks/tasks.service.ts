@@ -10,6 +10,7 @@ import { TaskFilterDto } from './dto/filter-task.dto';
 import { TaskStatus } from './task-status.enum';
 import { Task } from './task.entity';
 import { TaskRepository } from './task.repository';
+import { User } from '../auth/user.entity';
 
 @Injectable()
 export class TasksService {
@@ -18,8 +19,8 @@ export class TasksService {
     private taskRepository: TaskRepository,
   ) {}
 
-  getAllTasks(taskFilterDto: TaskFilterDto): Promise<Task[]> {
-    return this.taskRepository.getAllTasks(taskFilterDto);
+  getAllTasks(taskFilterDto: TaskFilterDto, user: User): Promise<Task[]> {
+    return this.taskRepository.getAllTasks(taskFilterDto, user);
   }
   // getTasksWithFilters(taskFilterDto: TaskFilterDto): Task[] {
   //   const { status, searchTerm } = taskFilterDto;
@@ -43,8 +44,10 @@ export class TasksService {
   //   return found;
   // }
 
-  async getTaskById(taskId: number): Promise<Task> {
-    const found = await this.taskRepository.findOne(taskId);
+  async getTaskById(taskId: number, user: User): Promise<Task> {
+    const found = await this.taskRepository.findOne({
+      where: { id: taskId, userId: user.id },
+    });
 
     if (!found)
       throw new NotFoundException(`There is no such task with id ${taskId}`);
@@ -52,8 +55,8 @@ export class TasksService {
     return found;
   }
 
-  async createTask(createTaskDto: CreateTaskDto): Promise<Task> {
-    return this.taskRepository.createTask(createTaskDto);
+  async createTask(createTaskDto: CreateTaskDto, user: User): Promise<Task> {
+    return this.taskRepository.createTask(createTaskDto, user);
   }
   // createTask(createTaskDto: CreateTaskDto): Task {
   //   const { title, description } = createTaskDto;
@@ -68,18 +71,24 @@ export class TasksService {
   //   return task;
   // }
 
-  async deleteTask(taskId: number): Promise<void> {
-    const result = await this.taskRepository.delete(taskId);
+  async deleteTask(
+    taskId: string, // error with number ????????
+    user: User
+  ): Promise<void> {
+    const result = await this.taskRepository.delete({
+      id: taskId,
+      userId: user.id,
+    });
 
     if (result.affected === 0)
       throw new NotFoundException(`There is no such task with id ${taskId}`);
   }
 
-  async removeTask(taskId: number): Promise<void> {
-    const taskToRemove = await this.getTaskById(taskId);
+  // async removeTask(taskId: number): Promise<void> {
+  //   const taskToRemove = await this.getTaskById(taskId);
 
-    this.taskRepository.remove(taskToRemove);
-  }
+  //   this.taskRepository.remove(taskToRemove);
+  // }
   // deleteTask(taskId: string): string {
   //   const taskIndex = this.tasks.findIndex((task: Task) => task.id === taskId);
   //   this.tasks.splice(taskIndex, 1);
@@ -89,8 +98,12 @@ export class TasksService {
   //   this.tasks = this.tasks.filter((task: Task) => task.id !== taskId);
   // }
 
-  async updateTaskStatus(taskId: number, status: TaskStatus): Promise<Task> {
-    const task = await this.getTaskById(taskId);
+  async updateTaskStatus(
+    taskId: number,
+    status: TaskStatus,
+    user: User,
+  ): Promise<Task> {
+    const task = await this.getTaskById(taskId, user);
 
     task.status = status;
     await task.save();

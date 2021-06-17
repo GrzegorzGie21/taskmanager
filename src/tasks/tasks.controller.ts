@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -17,19 +18,29 @@ import { TaskFilterDto } from './dto/filter-task.dto';
 import { TaskStatusValidatorPipe } from './pipes/task-status-validator.pipe';
 import { Task } from './task.entity';
 import { TaskStatus } from './task-status.enum';
+import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from 'src/auth/get-user.decorator';
+import { User } from '../auth/user.entity';
 
 @Controller('tasks')
+@UseGuards(AuthGuard())
 export class TasksController {
   constructor(private tasksService: TasksService) {}
 
   @Get()
-  getTasks(@Query(ValidationPipe) taskFilterDto: TaskFilterDto) {
-    return this.tasksService.getAllTasks(taskFilterDto);
+  getTasks(
+    @Query(ValidationPipe) taskFilterDto: TaskFilterDto,
+    @GetUser() user: User,
+  ) {
+    return this.tasksService.getAllTasks(taskFilterDto, user);
   }
 
   @Get(':id')
-  getTaskById(@Param('id', ParseIntPipe) id: number): Promise<Task> {
-    return this.tasksService.getTaskById(id);
+  getTaskById(
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser() user: User,
+  ): Promise<Task> {
+    return this.tasksService.getTaskById(id, user);
   }
 
   @Post()
@@ -38,8 +49,9 @@ export class TasksController {
     // @Body('title') title: string,
     // @Body('description') description: string,
     @Body() createTaskDto: CreateTaskDto,
+    @GetUser() user: User,
   ): Promise<Task> {
-    const newTask = this.tasksService.createTask(createTaskDto);
+    const newTask = this.tasksService.createTask(createTaskDto, user);
     return newTask;
   }
 
@@ -51,8 +63,13 @@ export class TasksController {
   // }
 
   @Delete(':id')
-  deleteTask(@Param('id', ParseIntPipe) id: number): Promise<void> {
-    return this.tasksService.deleteTask(id);
+  deleteTask(
+    @Param('id', ParseIntPipe) id: string, // error with number ????????
+    @GetUser() user: User,
+  ): Promise<void> {
+    console.log(typeof id);
+    
+    return this.tasksService.deleteTask(id, user);
   }
 
   // @Delete(':id')
@@ -64,7 +81,8 @@ export class TasksController {
   updateTaskStatus(
     @Param('id') id: number,
     @Body('status', TaskStatusValidatorPipe) status: TaskStatus,
+    @GetUser() user: User,
   ): Promise<Task> {
-    return this.tasksService.updateTaskStatus(id, status);
+    return this.tasksService.updateTaskStatus(id, status, user);
   }
 }
